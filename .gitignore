@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environment
+.venv/
+venv/
+env/
+
+# Dataset - DO NOT COMMIT
+data/raw/
+
+# Generated processed datasets
+data/processed/*.csv
+
+# Trained model files
+models/*.pth
+models/*.pt
+models/*.onnx
+
+# Training outputs
+results/
+*.log
+
+# Jupyter
+.ipynb_checkpoints/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
