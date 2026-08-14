@@ -15,9 +15,7 @@ data/raw/
 data/processed/*.csv
 
 # Trained model files
-models/*.pth
-models/*.pt
-models/*.onnx
+models/
 
 # Training outputs
 results/
