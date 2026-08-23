@@ -3,7 +3,7 @@ from pathlib import Path
 import pandas as pd
 import torch
 from torch import nn
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms, models
 from torchvision.models import ResNet50_Weights
 
@@ -14,20 +14,25 @@ from sklearn.metrics import (
 )
 
 from PIL import Image
-from torch.utils.data import Dataset
 
+
+# ============================================================
+# CONFIG
+# ============================================================
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 TEST_CSV = PROJECT_ROOT / "data" / "processed" / "test_final.csv"
 
+# EXPERIMENT 1 CHECKPOINT
 MODEL_FILE = (
     PROJECT_ROOT
     / "models"
-    / "best_resnet50_classifier.pth"
+    / "best_resnet50_exp1.pth"
 )
 
 IMAGE_SIZE = 224
+BATCH_SIZE = 16
 
 CLASS_NAMES = [
     "normal",
@@ -52,7 +57,7 @@ DEVICE = torch.device(
 )
 
 print("=" * 60)
-print("BONE RADIOGRAPHY - MODEL EVALUATION")
+print("BONE RADIOGRAPHY - EXPERIMENT 1 EVALUATION")
 print("=" * 60)
 
 print(f"Device: {DEVICE}")
@@ -104,6 +109,7 @@ class BoneXrayDataset(Dataset):
 weights = ResNet50_Weights.DEFAULT
 
 transform = transforms.Compose([
+
     transforms.Resize(
         (IMAGE_SIZE, IMAGE_SIZE)
     ),
@@ -142,36 +148,70 @@ test_dataset = BoneXrayDataset(
 
 test_loader = DataLoader(
     test_dataset,
-    batch_size=16,
+    batch_size=BATCH_SIZE,
     shuffle=False,
     num_workers=0
 )
 
 
 # ============================================================
-# LOAD MODEL
+# LOAD EXPERIMENT 1 MODEL
 # ============================================================
 
-print("\nLoading trained model...")
+print("\nLoading Experiment 1 model...")
+
+print(
+    f"Checkpoint: {MODEL_FILE}"
+)
 
 checkpoint = torch.load(
     MODEL_FILE,
     map_location=DEVICE
 )
 
+
 model = models.resnet50(
     weights=None
 )
 
+
+# ------------------------------------------------------------
+# Freeze entire backbone first
+# ------------------------------------------------------------
+
+for parameter in model.parameters():
+    parameter.requires_grad = False
+
+
+# ------------------------------------------------------------
+# Recreate Experiment 1 classifier
+# ------------------------------------------------------------
+
 num_features = model.fc.in_features
 
 model.fc = nn.Sequential(
-    nn.Dropout(p=0.30),
+    nn.Dropout(p=0.35),
     nn.Linear(
         num_features,
         len(CLASS_NAMES)
     )
 )
+
+
+# ------------------------------------------------------------
+# Recreate Experiment 1 fine-tuning configuration
+# ------------------------------------------------------------
+
+for parameter in model.layer3.parameters():
+    parameter.requires_grad = True
+
+for parameter in model.layer4.parameters():
+    parameter.requires_grad = True
+
+
+# ------------------------------------------------------------
+# Load checkpoint
+# ------------------------------------------------------------
 
 model.load_state_dict(
     checkpoint["model_state_dict"]
@@ -193,7 +233,10 @@ with torch.no_grad():
 
     for images, labels in test_loader:
 
-        images = images.to(DEVICE)
+        images = images.to(
+            DEVICE,
+            non_blocking=True
+        )
 
         outputs = model(images)
 
@@ -219,8 +262,9 @@ accuracy = accuracy_score(
     all_predictions
 )
 
+
 print("\n" + "=" * 60)
-print("RESULTS")
+print("EXPERIMENT 1 RESULTS")
 print("=" * 60)
 
 print(
@@ -258,3 +302,46 @@ print("\nClass order:")
 
 for i, name in enumerate(CLASS_NAMES):
     print(f"{i}: {name}")
+
+
+# ============================================================
+# COMPARISON
+# ============================================================
+
+BASELINE_ACCURACY = 0.7132
+
+improvement = accuracy - BASELINE_ACCURACY
+
+print("\n" + "=" * 60)
+print("BASELINE COMPARISON")
+print("=" * 60)
+
+print(
+    f"Baseline:       {BASELINE_ACCURACY * 100:.2f}%"
+)
+
+print(
+    f"Experiment 1:   {accuracy * 100:.2f}%"
+)
+
+print(
+    f"Change:         {improvement * 100:+.2f} percentage points"
+)
+
+if improvement > 0:
+
+    print(
+        "\n✓ Experiment 1 BEATS the baseline."
+    )
+
+elif improvement < 0:
+
+    print(
+        "\n✗ Experiment 1 is below the baseline."
+    )
+
+else:
+
+    print(
+        "\n= Experiment 1 matches the baseline."
+    )
