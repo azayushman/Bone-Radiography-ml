@@ -19,7 +19,7 @@ from torch.utils.data import Dataset
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
-TEST_CSV = PROJECT_ROOT / "data" / "processed" / "test.csv"
+TEST_CSV = PROJECT_ROOT / "data" / "processed" / "test_final.csv"
 
 MODEL_FILE = (
     PROJECT_ROOT
@@ -88,7 +88,7 @@ class BoneXrayDataset(Dataset):
         ).convert("RGB")
 
         label = CLASS_TO_INDEX[
-            row["diagnosis"]
+            row["label"]
         ]
 
         if self.transform:
@@ -130,7 +130,7 @@ print(
 print("\nTest distribution:")
 
 print(
-    test_df["diagnosis"]
+    test_df["label"]
     .value_counts()
 )
 

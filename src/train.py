@@ -18,8 +18,8 @@ from torchvision.models import ResNet50_Weights
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
-TRAIN_CSV = PROJECT_ROOT / "data" / "processed" / "train.csv"
-VAL_CSV = PROJECT_ROOT / "data" / "processed" / "val.csv"
+TRAIN_CSV = PROJECT_ROOT / "data" / "processed" / "train_final.csv"
+VAL_CSV = PROJECT_ROOT / "data" / "processed" / "val_final.csv"
 
 MODEL_DIR = PROJECT_ROOT / "models"
 MODEL_DIR.mkdir(parents=True, exist_ok=True)
@@ -91,7 +91,7 @@ class BoneXrayDataset(Dataset):
 
         image = Image.open(image_path).convert("RGB")
 
-        label = CLASS_TO_INDEX[row["diagnosis"]]
+        label = CLASS_TO_INDEX[row["label"]]
 
         if self.transform:
             image = self.transform(image)
@@ -150,7 +150,7 @@ print(f"Training images:   {len(train_df)}")
 print(f"Validation images: {len(val_df)}")
 
 print("\nTraining distribution:")
-print(train_df["diagnosis"].value_counts())
+print(train_df["label"].value_counts())
 
 
 train_dataset = BoneXrayDataset(
@@ -186,11 +186,10 @@ val_loader = DataLoader(
 # ============================================================
 
 class_counts = (
-    train_df["diagnosis"]
+    train_df["label"]
     .value_counts()
     .reindex(CLASS_NAMES)
 )
-
 class_weights = len(train_df) / (
     len(CLASS_NAMES) * class_counts
 )
